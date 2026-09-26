@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بازی دوز</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { min-height: 100%; }
+  body {
+    min-height: 100vh; padding: 14px;
+    font-family: Tahoma, Arial, sans-serif;
+    background: -webkit-linear-gradient(top, #061237 0%, #0a2a6b 50%, #061237 100%);
+    background: linear-gradient(180deg, #061237 0%, #0a2a6b 50%, #061237 100%);
+    background-attachment: fixed; color: #fff; text-align: center;
+  }
+  .game {
+    width: 100%; max-width: 440px; margin: 0 auto;
+    padding: 20px 16px 22px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(96,165,250,0.35);
+    border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  h1 { font-size: 26px; margin-bottom: 10px; color: #93c5fd; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(96,165,250,0.5); }
+  .user-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; padding: 8px 12px;
+    background: rgba(37,99,235,0.25);
+    border: 1px solid rgba(96,165,250,0.4);
+    border-radius: 12px; font-size: 13px; font-weight: bold;
+  }
+  .user-bar .name { color: #ffd75a; }
+  .user-bar .wallet { color: #4ade80; }
+
+  .room-info { margin: 10px 0 8px; padding: 12px; background: rgba(37,99,235,0.25); border: 2px dashed #60a5fa; border-radius: 12px; }
+  .room-info .label { font-size: 12px; color: #bfdbfe; }
+  .room-info .code { font-size: 26px; font-weight: bold; letter-spacing: 6px; color: #ffd75a; font-family: monospace; text-shadow: 0 0 10px rgba(255,215,90,0.5); }
+
+  .players { margin: 8px 0; padding: 10px; background: rgba(37,99,235,0.18); border: 1px solid rgba(96,165,250,0.35); border-radius: 10px; text-align: right; }
+  .players .title { font-size: 12px; color: #bfdbfe; font-weight: bold; margin-bottom: 6px; }
+  .players .p { display: inline-block; margin: 3px; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; background: rgba(96,165,250,0.3); color: #dbeafe; }
+  .players .p.x { background: #2563eb; color: #fff; }
+  .players .p.o { background: #dc2626; color: #fff; }
+  .players .p.me { border: 2px solid #ffd75a; }
+
+  .status { min-height: 24px; margin: 10px 0 12px; font-size: 15px; font-weight: bold; color: #bfdbfe; }
+  .status.win  { color: #4ade80; }
+  .status.lose { color: #f87171; }
+  .status.draw { color: #fbbf24; }
+
+  .board-wrap { margin-bottom: 14px; }
+  table.board { width: 100%; border-collapse: separate; border-spacing: 8px; table-layout: fixed; padding: 8px; background: rgba(37,99,235,0.15); border: 2px solid rgba(96,165,250,0.4); border-radius: 16px; }
+  table.board td { width: 33.33%; height: 88px; background: rgba(37,99,235,0.28); border: 2px solid rgba(96,165,250,0.5); border-radius: 12px; text-align: center; vertical-align: middle; font-size: 46px; font-weight: bold; color: #fff; cursor: pointer; -webkit-user-select: none; user-select: none; }
+  table.board td.x { color: #7ec8f0; text-shadow: 0 0 12px rgba(126,200,240,0.6); }
+  table.board td.o { color: #ff8a80; text-shadow: 0 0 12px rgba(255,138,128,0.6); }
+  table.board td.win-cell { background: rgba(74,222,128,0.4); border-color: #4ade80; box-shadow: 0 0 20px rgba(74,222,128,0.6); }
+  table.board.disabled td { opacity: 0.55; }
+
+  .btn { display: block; width: 100%; padding: 16px; margin-bottom: 10px; font-family: Tahoma, Arial, sans-serif; font-size: 16px; font-weight: bold; color: #fff; border: none; border-radius: 14px; cursor: pointer; background: -webkit-linear-gradient(top, #3b82f6 0%, #1d4ed8 100%); background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); box-shadow: 0 6px 0 #1e40af; text-shadow: 1px 1px 0 rgba(0,0,0,0.25); }
+  .btn:active { -webkit-transform: translateY(4px); transform: translateY(4px); box-shadow: 0 2px 0 #1e40af; }
+  .btn.small { padding: 10px; font-size: 13px; margin-bottom: 6px; }
+  .btn.green  { background: -webkit-linear-gradient(top, #34d399 0%, #059669 100%); background: linear-gradient(180deg, #34d399 0%, #059669 100%); box-shadow: 0 6px 0 #065f46; }
+  .btn.green:active  { box-shadow: 0 2px 0 #065f46; }
+  .btn.purple { background: -webkit-linear-gradient(top, #6b21a8 0%, #3b0764 100%); background: linear-gradient(180deg, #6b21a8 0%, #3b0764 100%); box-shadow: 0 6px 0 #1e0538; }
+  .btn.purple:active { box-shadow: 0 2px 0 #1e0538; }
+  .btn.gold   { background: -webkit-linear-gradient(top, #facc15 0%, #b8860b 100%); background: linear-gradient(180deg, #facc15 0%, #b8860b 100%); color: #3d2510; text-shadow: 1px 1px 0 rgba(255,255,255,0.4); box-shadow: 0 6px 0 #6b4e00; }
+  .btn.gold:active   { box-shadow: 0 2px 0 #6b4e00; }
+  .btn.red    { background: -webkit-linear-gradient(top, #f87171 0%, #dc2626 100%); background: linear-gradient(180deg, #f87171 0%, #dc2626 100%); box-shadow: 0 6px 0 #7f1d1d; }
+  .btn.red:active    { box-shadow: 0 2px 0 #7f1d1d; }
+  .btn.orange { background: -webkit-linear-gradient(top, #fb923c 0%, #ea580c 100%); background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%); box-shadow: 0 6px 0 #9a3412; }
+  .btn.orange:active { box-shadow: 0 2px 0 #9a3412; }
+  .btn.teal   { background: -webkit-linear-gradient(top, #14b8a6 0%, #0f766e 100%); background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%); box-shadow: 0 6px 0 #134e4a; }
+  .btn.teal:active   { box-shadow: 0 2px 0 #134e4a; }
+
+  .input { width: 100%; padding: 16px; margin-bottom: 10px; font-family: Tahoma, Arial, sans-serif; font-size: 22px; font-weight: bold; text-align: center; letter-spacing: 6px; color: #fff; background: rgba(37,99,235,0.2); border: 2px solid rgba(96,165,250,0.5); border-radius: 14px; outline: none; text-transform: uppercase; }
+  .input::placeholder { color: #60a5fa; letter-spacing: 2px; }
+  .input-name { letter-spacing: 0; text-transform: none; font-size: 18px; }
+  .input-password { letter-spacing: 4px; font-size: 20px; text-transform: none; }
+
+  .hint { font-size: 13px; color: #bfdbfe; margin: 8px 0; line-height: 1.5; font-weight: bold; }
+  .hidden { display: none; }
+
+  .server-status { position: fixed; top: 8px; right: 8px; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; z-index: 2000; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); display: none; }
+  .server-status.show { display: block; }
+  .server-status.online { color: #4ade80; border-color: #4ade80; }
+  .server-status.offline { color: #f87171; border-color: #f87171; }
+  .server-status .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+  .server-status.online .dot { background: #4ade80; }
+  .server-status.offline .dot { background: #f87171; }
+
+  .toast {
+    position: fixed; top: 20px; left: 50%;
+    -webkit-transform: translateX(-50%) translateY(-100px);
+    transform: translateX(-50%) translateY(-100px);
+    padding: 10px 18px;
+    background: rgba(20, 20, 40, 0.95);
+    border: 2px solid #60a5fa;
+    border-radius: 30px;
+    color: #fff; font-size: 13px; font-weight: bold;
+    z-index: 5000;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+    opacity: 0;
+    -webkit-transition: all 0.3s; transition: all 0.3s;
+    max-width: 90vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toast.show {
+    -webkit-transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .toast.success { border-color: #4ade80; }
+  .toast.error { border-color: #f87171; }
+
+  .chat-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 900; }
+  .chat-btn { position: fixed; top: 0; left: 0; width: 60px; height: 60px; border-radius: 50%; background: -webkit-linear-gradient(top, #3b82f6 0%, #1d4ed8 100%); background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); border: 3px solid #60a5fa; color: #fff; font-size: 26px; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.6); z-index: 1001; padding: 0; display: block; line-height: 56px; -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); touch-action: none; -webkit-user-select: none; user-select: none; will-change: transform; }
+  .chat-btn.pressing { border-color: #ffd75a; box-shadow: 0 0 0 4px rgba(255,215,90,0.4), 0 6px 20px rgba(37,99,235,0.8); }
+  .chat-btn.dragging { -webkit-transform: scale(1.15); transform: scale(1.15); box-shadow: 0 10px 30px rgba(37,99,235,0.9); }
+  .chat-btn .badge { position: absolute; top: -4px; right: -4px; background: #dc2626; color: #fff; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 10px; display: none; line-height: 1; }
+  .chat-btn .badge.show { display: block; }
+  .chat-panel { position: fixed; top: 12px; left: 12px; width: 290px; max-width: calc(100vw - 24px); height: 360px; background: -webkit-linear-gradient(top, #0a1a4a 0%, #061237 100%); background: linear-gradient(180deg, #0a1a4a 0%, #061237 100%); border: 2px solid #3b82f6; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); z-index: 1000; overflow: hidden; text-align: right; }
+  .chat-header { padding: 6px 8px; background: #1d4ed8; color: #fff; font-weight: bold; font-size: 13px; height: 44px; line-height: 32px; overflow: hidden; }
+  .chat-title { float: right; padding-right: 8px; }
+  .chat-close { float: left; width: 44px; height: 32px; line-height: 30px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; color: #fff; font-size: 18px; font-weight: bold; cursor: pointer; padding: 0; font-family: Arial, sans-serif; text-align: center; }
+  .chat-close:active { background: rgba(255,255,255,0.35); }
+  .chat-messages { height: 272px; overflow-y: auto; padding: 8px; background: rgba(0,0,0,0.25); color: #fff; font-size: 12px; text-align: right; }
+  .chat-msg { margin-bottom: 6px; padding: 5px 9px; border-radius: 10px; background: rgba(96,165,250,0.3); max-width: 85%; word-wrap: break-word; display: inline-block; clear: both; float: right; text-align: right; }
+  .chat-msg.me { background: rgba(37,99,235,0.75); float: left; clear: both; }
+  .chat-msg .who { font-size: 10px; color: #93c5fd; display: block; margin-bottom: 2px; }
+  .chat-input-row { height: 44px; overflow: hidden; border-top: 1px solid rgba(96,165,250,0.3); }
+  .chat-input-row input { width: 70%; height: 44px; padding: 0 10px; background: rgba(255,255,255,0.08); border: none; color: #fff; font-family: inherit; font-size: 13px; outline: none; float: right; }
+  .chat-input-row .send-btn { width: 30%; height: 44px; padding: 0; background: #2563eb; border: none; color: #fff; font-weight: bold; cursor: pointer; font-family: inherit; font-size: 13px; float: left; }
+  .chat-input-row .send-btn:active { background: #1d4ed8; }
+
+  .shop-item { margin-bottom: 8px; padding: 10px; background: rgba(37,99,235,0.18); border: 1px solid rgba(96,165,250,0.4); border-radius: 12px; text-align: right; overflow: hidden; }
+  .shop-item.locked-item { opacity: 0.7; }
+  .shop-item.free-mode { background: rgba(74,222,128,0.15); border-color: #4ade80; box-shadow: 0 0 15px rgba(74,222,128,0.3); }
+  .shop-item .icon { float: right; font-size: 28px; margin-left: 10px; line-height: 40px; }
+  .shop-item .info { padding-right: 44px; }
+  .shop-item .info .name { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 4px; }
+  .shop-item .info .desc { font-size: 11px; color: #bfdbfe; margin-bottom: 6px; }
+  .shop-item .info .price { font-size: 12px; font-weight: bold; color: #ffd75a; }
+  .shop-item .info .price.free { color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.6); }
+  .shop-item .buy-btn { display: block; width: 100%; margin-top: 8px; padding: 8px; font-size: 13px; border: none; border-radius: 8px; background: #16a34a; color: #fff; font-weight: bold; cursor: pointer; }
+  .shop-item .buy-btn:active { background: #15803d; }
+  .shop-item .buy-btn.owned { background: #475569; cursor: default; }
+  .shop-item .buy-btn.locked { background: #64748b; cursor: not-allowed; }
+  .shop-item .buy-btn.shop-locked { background: #dc2626; }
+  .shop-item .buy-btn.free-btn { background: -webkit-linear-gradient(top, #4ade80 0%, #16a34a 100%); background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%); color: #052e16; }
+
+  .shop-lock-banner {
+    margin-bottom: 12px; padding: 12px;
+    background: rgba(220,38,38,0.15);
+    border: 2px solid rgba(248,113,113,0.6);
+    border-radius: 12px;
+    font-size: 12px;
+    color: #fecaca;
+    text-align: right;
+  }
+  .shop-lock-banner .lock-title {
+    font-size: 14px; font-weight: bold; color: #f87171; margin-bottom: 6px;
+  }
+  .shop-lock-banner input { margin-top: 8px; margin-bottom: 8px; }
+  .shop-lock-banner button { margin-bottom: 0; }
+
+  .free-countdown {
+    margin-bottom: 12px; padding: 10px;
+    background: rgba(74,222,128,0.2);
+    border: 2px solid #4ade80;
+    border-radius: 12px;
+    text-align: center;
+    animation: pulseGreen 1s ease-in-out infinite alternate;
+  }
+  .free-countdown .title {
+    font-size: 14px; font-weight: bold; color: #4ade80;
+    margin-bottom: 4px;
+  }
+  .free-countdown .time {
+    font-size: 30px; font-weight: bold; color: #fff;
+    text-shadow: 0 0 15px rgba(74,222,128,0.9);
+    font-family: monospace;
+  }
+  .free-countdown .bar {
+    margin-top: 6px;
+    height: 6px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .free-countdown .bar-fill {
+    height: 100%;
+    background: -webkit-linear-gradient(left, #4ade80, #22c55e);
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 3px;
+    -webkit-transition: width 0.1s linear;
+    transition: width 0.1s linear;
+  }
+  @keyframes pulseGreen {
+    from { box-shadow: 0 0 5px rgba(74,222,128,0.5); }
+    to { box-shadow: 0 0 20px rgba(74,222,128,0.9); }
+  }
+
+  /* عنوان فروشگاه - قابل نگه‌داشتن برای پنل سازنده */
+  .shop-title {
+    font-size: 15px;
+    color: #bfdbfe;
+    margin: 8px 0;
+    line-height: 1.5;
+    font-weight: bold;
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    padding: 6px;
+    display: inline-block;
+  }
+  .shop-title.pressing {
+    color: #ffd75a;
+    text-shadow: 0 0 10px rgba(255,215,90,0.8);
+  }
+
+  .code-display { margin: 10px 0; padding: 14px; background: rgba(0,0,0,0.4); border: 2px dashed #ffd75a; border-radius: 12px; font-family: monospace; font-size: 22px; letter-spacing: 4px; color: #ffd75a; font-weight: bold; text-align: center; word-break: break-all; }
+  .amount-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+  .amount-btn { padding: 10px 4px; font-size: 13px; font-weight: bold; border: 2px solid rgba(96,165,250,0.5); border-radius: 10px; background: rgba(37,99,235,0.3); color: #fff; cursor: pointer; }
+  .amount-btn.selected { background: #ffd75a; color: #3d2510; border-color: #b8860b; }
+
+  .lock-icon { font-size: 48px; margin: 10px 0; display: block; }
+  .password-box { padding: 16px; background: rgba(220,38,38,0.15); border: 2px solid rgba(248,113,113,0.5); border-radius: 14px; margin-bottom: 12px; }
+
+  .tab-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tab-bar button {
+    flex: 1; padding: 8px 6px; font-size: 12px; font-weight: bold;
+    background: rgba(37,99,235,0.3); color: #fff;
+    border: 2px solid rgba(96,165,250,0.4);
+    border-radius: 10px; cursor: pointer;
+  }
+  .tab-bar button.active {
+    background: #2563eb; border-color: #60a5fa;
+  }
+
+  .owner-panel-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(15, 118, 110, 0.2);
+    border: 2px dashed #14b8a6;
+    border-radius: 14px;
+    text-align: right;
+  }
+  .owner-panel-box .title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #5eead4;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="server-status" id="serverStatus">
+    <span class="dot"></span>
+    <span id="serverStatusText">متصل</span>
+  </div>
+
+  <div class="chat-overlay hidden" id="chatOverlay" onclick="closeChat()"></div>
+  <button type="button" class="chat-btn" id="chatBtn">
+    💬<span class="badge" id="chatBadge">0</span>
+  </button>
+  <div class="chat-panel hidden" id="chatPanel">
+    <div class="chat-header">
+      <button type="button" class="chat-close" id="chatCloseBtn">✕</button>
+      <span class="chat-title">💬 چت</span>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <button type="button" class="send-btn" id="chatSendBtn">ارسال</button>
+      <input type="text" id="chatInput" placeholder="پیام..." maxlength="200" />
+    </div>
+  </div>
+
+  <div class="game">
+    <h1>🎮 بازی دوز</h1>
+
+    <div class="user-bar" id="userBar" style="display:none;">
+      <span class="name" id="userName">👤 بازیکن</span>
+      <span class="wallet" id="userWallet">💰 0</span>
+    </div>
+
+    <div id="nameScreen">
+      <p class="hint">لطفاً اسم خودت رو وارد کن:</p>
+      <input class="input input-name" id="nameInput" type="text" maxlength="15" placeholder="اسم شما..." />
+      <button type="button" class="btn green" onclick="saveName()">✅ تأیید و ادامه</button>
+    </div>
+
+    <div id="mainContent" class="hidden">
+      <div class="room-info hidden" id="roomInfo">
+        <div class="label">کد اتاق:</div>
+        <div class="code" id="roomCode">------</div>
+      </div>
+
+      <div class="players hidden" id="playersBox">
+        <div class="title">👥 بازیکنان اتاق:</div>
+        <div id="playerList"></div>
+      </div>
+
+      <p class="status" id="status">حالت بازی رو انتخاب کن</p>
+
+      <div class="board-wrap">
+        <table class="board disabled" id="board">
+          <tr><td data-index="0"></td><td data-index="1"></td><td data-index="2"></td></tr>
+          <tr><td data-index="3"></td><td data-index="4"></td><td data-index="5"></td></tr>
+          <tr><td data-index="6"></td><td data-index="7"></td><td data-index="8"></td></tr>
+        </table>
+      </div>
+
+      <div class="menu-area">
+        <div id="menu">
+          <button type="button" class="btn green" onclick="showOnlineMenu()">🌐 آنلاین (اتاق گروهی)</button>
+          <button type="button" class="btn purple" onclick="startOffline()">👥 آفلاین (دو نفره)</button>
+          <button type="button" class="btn" onclick="startSingle()">🤖 یک نفره (با کامپیوتر)</button>
+          <button type="button" class="btn orange" onclick="showShop()">🛒 فروشگاه</button>
+        </div>
+
+        <div id="onlineMenu" class="hidden">
+          <p class="hint">یکی بسازه، بقیه با کد وارد شن:</p>
+          <button type="button" class="btn green" onclick="createOnlineGame()">➕ ساخت اتاق جدید</button>
+          <input class="input" id="codeInput" type="text" maxlength="6" placeholder="کد ۶ رقمی" />
+          <button type="button" class="btn gold" onclick="joinOnlineGame()">🔗 ورود با کد</button>
+
+          <p class="hint" style="margin-top:14px;">🎁 کد هدیه داری؟ (فقط در آنلاین)</p>
+          <input class="input" id="giftCodeInput" type="text" maxlength="12" placeholder="کد هدیه..." style="letter-spacing:2px; font-size:16px;" />
+          <button type="button" class="btn teal" onclick="redeemGiftCode()">🎁 دریافت هدیه</button>
+
+          <button type="button" class="btn red" onclick="backToMenu()">⬅️ بازگشت</button>
+        </div>
+
+        <div id="waiting" class="hidden">
+          <p class="hint">این کد رو به دوستات بده:</p>
+          <p class="hint">⏳ در انتظار اتصال...</p>
+          <button type="button" class="btn gold" onclick="startOnlineGame()">▶️ شروع بازی</button>
+          <button type="button" class="btn red" onclick="backToMenu()">لغو</button>
+        </div>
+
+        <div id="connecting" class="hidden">
+          <p class="hint">⏳ در حال اتصال...</p>
+          <button type="button" class="btn red" onclick="backToMenu()">لغو</button>
+        </div>
+
+        <div id="afterGame" class="hidden">
+          <button type="button" class="btn gold" onclick="restartSame()">🔄 شروع مجدد</button>
+          <button type="button" class="btn" onclick="backToMenu()">🏠 بازگشت به منو</button>
+        </div>
+
+        <!-- فروشگاه - بدون دکمه‌ی پنل سازنده (مخفی) -->
+        <div id="shopScreen" class="hidden">
+          <p class="shop-title" id="shopTitle">🛒 فروشگاه</p>
+
+          <div id="freeCountdown" class="free-countdown hidden">
+            <div class="title">🎁 حالت رایگان فعال!</div>
+            <div class="time" id="freeTimeLeft">6.0</div>
+            <div class="bar"><div class="bar-fill" id="freeBar" style="width:100%;"></div></div>
+          </div>
+
+          <div id="shopLockBanner" class="shop-lock-banner">
+            <div class="lock-title">🔒 فروشگاه قفل است</div>
+            <div>برای باز کردن فروشگاه، کد سازنده رو وارد کن:</div>
+            <input class="input" id="shopUnlockInput" type="text" maxlength="20" placeholder="UNLOCK-XXXXXX" style="letter-spacing:2px; font-size:15px;" />
+            <button type="button" class="btn green" onclick="unlockShop()">🔓 باز کردن فروشگاه (۶ ثانیه)</button>
+          </div>
+
+          <div id="shopItems"></div>
+
+          <button type="button" class="btn red" onclick="backToMenu()">⬅️ بازگشت</button>
+        </div>
+
+        <!-- پنل سازنده (فقط با نگه‌داشتن روی عنوان فروشگاه) -->
+        <div id="ownerPanelInShop" class="hidden">
+          <p class="hint">🔑 پنل سازنده</p>
+
+          <div id="ownerLoginBox" class="owner-panel-box">
+            <div class="title">🔒 رمز سازنده رو وارد کن</div>
+            <input class="input input-password" id="ownerShopPassword" type="password" placeholder="رمز..." />
+            <button type="button" class="btn green small" onclick="checkOwnerPasswordInShop()">🔓 ورود</button>
+            <button type="button" class="btn small" onclick="hideOwnerPanelInShop()">⬅️ بستن</button>
+          </div>
+
+          <div id="ownerContentBox" class="owner-panel-box hidden">
+            <div class="title">✅ خوش آمدی سازنده</div>
+
+            <div class="tab-bar">
+              <button type="button" id="shTabGift" class="active" onclick="shSwitchTab('gift')">🎁 کد هدیه</button>
+              <button type="button" id="shTabUnlock" onclick="shSwitchTab('unlock')">🔓 کد فروشگاه</button>
+            </div>
+
+            <div id="shTabGiftContent">
+              <p class="hint">مقدار پول رو انتخاب کن:</p>
+              <div class="amount-btns" id="shAmountBtns">
+                <button type="button" class="amount-btn" data-amount="100" onclick="shSelectAmount(100)">100</button>
+                <button type="button" class="amount-btn" data-amount="500" onclick="shSelectAmount(500)">500</button>
+                <button type="button" class="amount-btn" data-amount="1000" onclick="shSelectAmount(1000)">1000</button>
+                <button type="button" class="amount-btn" data-amount="2000" onclick="shSelectAmount(2000)">2000</button>
+                <button type="button" class="amount-btn" data-amount="3000" onclick="shSelectAmount(3000)">3000</button>
+                <button type="button" class="amount-btn" data-amount="5000" onclick="shSelectAmount(5000)">5000</button>
+              </div>
+              <div class="hint">مقدار: <span id="shSelectedAmount">---</span> سکه</div>
+              <button type="button" class="btn green small" onclick="shGenerateGiftCode()">🎲 ساخت کد هدیه</button>
+              <div id="shGeneratedGiftBox" class="hidden">
+                <div class="code-display" id="shGeneratedGift">------</div>
+                <p class="hint">این کد رو به بازیکن بده</p>
+              </div>
+              <p class="hint" style="margin-top:10px;">📋 کدهای هدیه:</p>
+              <div id="shGiftCodesList" style="font-size:12px; color:#bfdbfe; max-height:120px; overflow-y:auto;"></div>
+            </div>
+
+            <div id="shTabUnlockContent" class="hidden">
+              <p class="hint">این کد فروشگاه رو برای کاربر باز می‌کنه.</p>
+              <button type="button" class="btn teal small" onclick="shGenerateUnlockCode()">🔓 ساخت کد بازکردن فروشگاه</button>
+              <div id="shGeneratedUnlockBox" class="hidden">
+                <div class="code-display" id="shGeneratedUnlock">------</div>
+                <p class="hint">این کد رو به کاربر بده</p>
+              </div>
+              <p class="hint" style="margin-top:10px;">📋 کدهای فروشگاه:</p>
+              <div id="shUnlockCodesList" style="font-size:12px; color:#bfdbfe; max-height:120px; overflow-y:auto;"></div>
+            </div>
+
+            <p class="hint" style="margin-top:12px;">🔐 تغییر رمز:</p>
+            <input class="input input-password" id="shNewPassword" type="password" placeholder="رمز جدید..." />
+            <button type="button" class="btn orange small" onclick="shChangePassword()">🔐 تغییر رمز</button>
+
+            <button type="button" class="btn small" onclick="hideOwnerPanelInShop()">⬅️ بستن پنل</button>
+          </div>
+        </div>
+
+        <div id="payScreen" class="hidden">
+          <p class="hint">💳 برای ساخت گروه بیش از ۶ نفر، باید پرداخت کنی</p>
+          <div class="room-info" style="border-style:solid;">
+            <div class="label">هزینه ساخت گروه بزرگ:</div>
+            <div class="code" style="font-size:22px;">۵۰,۰۰۰ تومان</div>
+          </div>
+          <p class="hint">پرداخت امن از طریق درگاه بانکی</p>
+          <button type="button" class="btn green" onclick="doPayment()">💳 پرداخت با درگاه بانکی</button>
+          <button type="button" class="btn red" onclick="backToMenu()">⬅️ بازگشت</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  var WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+  var boardEl = document.getElementById('board');
+  var cells = [];
+  var tds = boardEl.getElementsByTagName('td');
+  for (var k = 0; k < tds.length; k++) cells.push(tds[k]);
+
+  var statusEl = document.getElementById('status');
+  var menuEl = document.getElementById('menu');
+  var onlineMenuEl = document.getElementById('onlineMenu');
+  var waitingEl = document.getElementById('waiting');
+  var connectingEl = document.getElementById('connecting');
+  var afterGameEl = document.getElementById('afterGame');
+  var roomInfoEl = document.getElementById('roomInfo');
+  var roomCodeEl = document.getElementById('roomCode');
+  var playersBoxEl = document.getElementById('playersBox');
+  var playerListEl = document.getElementById('playerList');
+  var codeInput = document.getElementById('codeInput');
+  var giftCodeInput = document.getElementById('giftCodeInput');
+  var shopScreenEl = document.getElementById('shopScreen');
+  var shopTitleEl = document.getElementById('shopTitle');
+  var shopLockBannerEl = document.getElementById('shopLockBanner');
+  var shopUnlockInputEl = document.getElementById('shopUnlockInput');
+  var shopItemsEl = document.getElementById('shopItems');
+  var payScreenEl = document.getElementById('payScreen');
+  var freeCountdownEl = document.getElementById('freeCountdown');
+  var freeTimeLeftEl = document.getElementById('freeTimeLeft');
+  var freeBarEl = document.getElementById('freeBar');
+
+  var ownerPanelInShopEl = document.getElementById('ownerPanelInShop');
+  var ownerLoginBoxEl = document.getElementById('ownerLoginBox');
+  var ownerContentBoxEl = document.getElementById('ownerContentBox');
+  var ownerShopPasswordEl = document.getElementById('ownerShopPassword');
+  var shAmountBtnsEl = document.getElementById('shAmountBtns');
+  var shSelectedAmountEl = document.getElementById('shSelectedAmount');
+  var shGeneratedGiftBoxEl = document.getElementById('shGeneratedGiftBox');
+  var shGeneratedGiftEl = document.getElementById('shGeneratedGift');
+  var shGiftCodesListEl = document.getElementById('shGiftCodesList');
+  var shGeneratedUnlockBoxEl = document.getElementById('shGeneratedUnlockBox');
+  var shGeneratedUnlockEl = document.getElementById('shGeneratedUnlock');
+  var shUnlockCodesListEl = document.getElementById('shUnlockCodesList');
+  var shNewPasswordEl = document.getElementById('shNewPassword');
+  var shTabGiftEl = document.getElementById('shTabGift');
+  var shTabUnlockEl = document.getElementById('shTabUnlock');
+  var shTabGiftContentEl = document.getElementById('shTabGiftContent');
+  var shTabUnlockContentEl = document.getElementById('shTabUnlockContent');
+
+  var nameScreenEl = document.getElementById('nameScreen');
+  var mainContentEl = document.getElementById('mainContent');
+  var nameInputEl = document.getElementById('nameInput');
+  var userBarEl = document.getElementById('userBar');
+  var userNameEl = document.getElementById('userName');
+  var userWalletEl = document.getElementById('userWallet');
+  var serverStatusEl = document.getElementById('serverStatus');
+  var serverStatusTextEl = document.getElementById('serverStatusText');
+  var toastEl = document.getElementById('toast');
+
+  var chatPanel = document.getElementById('chatPanel');
+  var chatOverlay = document.getElementById('chatOverlay');
+  var chatMessages = document.getElementById('chatMessages');
+  var chatInput = document.getElementById('chatInput');
+  var chatBadge = document.getElementById('chatBadge');
+  var chatCloseBtn = document.getElementById('chatCloseBtn');
+  var chatSendBtn = document.getElementById('chatSendBtn');
+  var chatBtn = document.getElementById('chatBtn');
+
+  var board = ['', '', '', '', '', '', '', '', ''];
+  var gameActive = false, busy = false;
+  var mode = 'single', currentPlayer = 'X';
+  var myRole = 'X', mySlot = 0;
+
+  var peer = null, connections = [];
+  var isHost = false, onlineTurn = 'X', hostConn = null;
+  var MAX_SLOTS = 6;
+  var chatOpen = false, unreadCount = 0;
+
+  var playerData = {
+    name: '',
+    wallet: 0,
+    ownedItems: []
+  };
+
+  var SHOP_ITEMS = [
+    { id: 'theme_red',     icon: '🔴', name: 'تم قرمز',           desc: 'رنگ تخته قرمز',           price: 150 },
+    { id: 'theme_green',   icon: '🟢', name: 'تم سبز',            desc: 'رنگ تخته سبز',            price: 150 },
+    { id: 'theme_purple',  icon: '🟣', name: 'تم بنفش',           desc: 'رنگ تخته بنفش',           price: 200 },
+    { id: 'sound',         icon: '🔊', name: 'صدای بازی',         desc: 'افکت صوتی',               price: 300 },
+    { id: 'emoji',         icon: '😀', name: 'ایموجی چت',         desc: 'ایموجی در چت',            price: 400 },
+    { id: 'theme_gold',    icon: '🟡', name: 'تم طلایی',           desc: 'رنگ تخته طلایی',          price: 500 },
+    { id: 'theme_diamond', icon: '💎', name: 'تم الماسی',          desc: 'رنگ درخشان',              price: 1000 },
+    { id: 'avatar_king',   icon: '👑', name: 'آواتار پادشاه',      desc: 'نشان پادشاه',             price: 2000 },
+    { id: 'avatar_queen',  icon: '👸', name: 'آواتار ملکه',        desc: 'نشان ملکه',               price: 1500 },
+    { id: 'premium_board', icon: '🏆', name: 'تخته پریمیوم',      desc: 'تخته‌ی خاص',              price: 5000 },
+    { id: 'group6',        icon: '👥', name: 'گروه ۶ نفره',        desc: 'ساخت گروه تا ۶ نفر',      price: 3000 }
+  ];
+
+  var disconnectTimer = null, disconnectSeconds = 0;
+  var offlineGraceSeconds = 600, isOfflineGrace = false;
+
+  var shSelectedAmount = 0;
+  var DEFAULT_PASSWORD = '1234';
+  var toastTimer = null;
+  var ownerAuthenticated = false;
+
+  var FREE_MODE_DURATION = 6;
+  var freeModeActive = false;
+  var freeModeTimer = null;
+  var freeModeStartTime = 0;
+
+  /* ========== نگه‌داشتن روی عنوان فروشگاه ========== */
+  var lpTimer = null;
+  var lpStartX = 0, lpStartY = 0;
+  var lpTriggered = false;
+
+  function lpStart(e) {
+    /* فقط اگه توی صفحه‌ی فروشگاه هستیم */
+    if (shopScreenEl.className.indexOf('hidden') !== -1) return;
+
+    var p = getPoint(e);
+    lpStartX = p.x;
+    lpStartY = p.y;
+    lpTriggered = false;
+
+    if (lpTimer) clearTimeout(lpTimer);
+    shopTitleEl.className = 'shop-title pressing';
+    lpTimer = setTimeout(function() {
+      lpTimer = null;
+      lpTriggered = true;
+      shopTitleEl.className = 'shop-title';
+      /* ✨ باز کردن پنل سازنده */
+      showOwnerPanelInShop();
+    }, 1500);
+  }
+
+  function lpMove(e) {
+    if (!lpTimer) return;
+    var p = getPoint(e);
+    var dx = Math.abs(p.x - lpStartX);
+    var dy = Math.abs(p.y - lpStartY);
+    if (dx > 15 || dy > 15) {
+      clearTimeout(lpTimer);
+      lpTimer = null;
+      shopTitleEl.className = 'shop-title';
+    }
+  }
+
+  function lpEnd(e) {
+    if (lpTimer) {
+      clearTimeout(lpTimer);
+      lpTimer = null;
+    }
+    shopTitleEl.className = 'shop-title';
+  }
+
+  /* اتصال رخدادها */
+  if (shopTitleEl.addEventListener) {
+    shopTitleEl.addEventListener('touchstart', lpStart, false);
+    shopTitleEl.addEventListener('touchmove', lpMove, false);
+    shopTitleEl.addEventListener('touchend', lpEnd, false);
+    shopTitleEl.addEventListener('touchcancel', lpEnd, false);
+    shopTitleEl.addEventListener('mousedown', lpStart, false);
+    document.addEventListener('mousemove', function(e) {
+      if (lpTimer) lpMove(e);
+    }, false);
+    document.addEventListener('mouseup', function(e) {
+      if (lpTimer) lpEnd(e);
+    }, false);
+    /* جلوگیری از منوی راست‌کلیک روی موبایل */
+    shopTitleEl.addEventListener('contextmenu', function(e) {
+      if (e.preventDefault) e.preventDefault();
+      return false;
+    }, false);
+  }
+
+  function showToast(msg, type) {
+    if (toastTimer) clearTimeout(toastTimer);
+    toastEl.innerHTML = msg;
+    toastEl.className = 'toast show' + (type ? ' ' + type : '');
+    toastTimer = setTimeout(function() { toastEl.className = 'toast'; }, 3000);
+  }
+
+  function saveData() {
+    try { if (window.localStorage) localStorage.setItem('dozPlayerData', JSON.stringify(playerData)); } catch(e){}
+  }
+  function loadData() {
+    try {
+      if (window.localStorage) {
+        var raw = localStorage.getItem('dozPlayerData');
+        if (raw) {
+          var d = JSON.parse(raw);
+          if (d) {
+            playerData.name = d.name || '';
+            playerData.wallet = (typeof d.wallet === 'number') ? d.wallet : 0;
+            playerData.ownedItems = d.ownedItems || [];
+          }
+        }
+      }
+    } catch(e){}
+  }
+
+  function getPassword() {
+    try { if (window.localStorage) { var p = localStorage.getItem('dozCreatorPassword'); if (p) return p; } } catch(e){}
+    return DEFAULT_PASSWORD;
+  }
+  function setPassword(np) {
+    try { if (window.localStorage) { localStorage.setItem('dozCreatorPassword', np); return true; } } catch(e){}
+    return false;
+  }
+
+  function updateUserBar() {
+    userNameEl.innerHTML = '👤 ' + (playerData.name || 'بازیکن');
+    userWalletEl.innerHTML = '💰 ' + playerData.wallet;
+    userBarEl.style.display = 'flex';
+  }
+
+  function saveName() {
+    var n = nameInputEl.value.trim();
+    if (!n) { nameInputEl.style.borderColor = '#f87171'; return; }
+    playerData.name = n;
+    saveData();
+    nameScreenEl.className = 'hidden';
+    mainContentEl.className = '';
+    updateUserBar();
+    statusEl.innerHTML = 'خوش آمدی ' + n + '! حالت بازی رو انتخاب کن';
+  }
+
+  function loadGiftCodes() {
+    try { if (window.localStorage) { var raw = localStorage.getItem('dozGiftCodes'); if (raw) return JSON.parse(raw); } } catch(e){}
+    return {};
+  }
+  function saveGiftCodes(codes) {
+    try { if (window.localStorage) localStorage.setItem('dozGiftCodes', JSON.stringify(codes)); } catch(e){}
+  }
+  function loadUnlockCodes() {
+    try { if (window.localStorage) { var raw = localStorage.getItem('dozUnlockCodes'); if (raw) return JSON.parse(raw); } } catch(e){}
+    return {};
+  }
+  function saveUnlockCodes(codes) {
+    try { if (window.localStorage) localStorage.setItem('dozUnlockCodes', JSON.stringify(codes)); } catch(e){}
+  }
+  function generateRandomCode(len) {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var c = '';
+    for (var i = 0; i < len; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
+    return c;
+  }
+
+  function showOwnerPanelInShop() {
+    shopScreenEl.className = 'hidden';
+    ownerPanelInShopEl.className = '';
+    ownerLoginBoxEl.className = 'owner-panel-box';
+    ownerContentBoxEl.className = 'owner-panel-box hidden';
+    ownerShopPasswordEl.value = '';
+    ownerShopPasswordEl.style.borderColor = '';
+  }
+
+  function hideOwnerPanelInShop() {
+    ownerPanelInShopEl.className = 'hidden';
+    ownerAuthenticated = false;
+    showShop();
+  }
+
+  function checkOwnerPasswordInShop() {
+    var p = ownerShopPasswordEl.value;
+    if (!p) return;
+    if (p === getPassword()) {
+      ownerAuthenticated = true;
+      ownerShopPasswordEl.value = '';
+      ownerLoginBoxEl.className = 'owner-panel-box hidden';
+      ownerContentBoxEl.className = 'owner-panel-box';
+      shSwitchTab('gift');
+      shRenderAllCodes();
+      showToast('✅ خوش آمدی سازنده', 'success');
+    } else {
+      ownerShopPasswordEl.value = '';
+      ownerShopPasswordEl.style.borderColor = '#f87171';
+      setTimeout(function() { ownerShopPasswordEl.style.borderColor = ''; }, 800);
+      showToast('❌ رمز اشتباهه', 'error');
+    }
+  }
+
+  function shSwitchTab(tab) {
+    if (tab === 'gift') {
+      shTabGiftEl.className = 'active';
+      shTabUnlockEl.className = '';
+      shTabGiftContentEl.className = '';
+      shTabUnlockContentEl.className = 'hidden';
+    } else {
+      shTabGiftEl.className = '';
+      shTabUnlockEl.className = 'active';
+      shTabGiftContentEl.className = 'hidden';
+      shTabUnlockContentEl.className = '';
+      shRenderUnlockCodes();
+    }
+  }
+
+  function shSelectAmount(amount) {
+    shSelectedAmount = amount;
+    shSelectedAmountEl.innerHTML = amount;
+    var btns = shAmountBtnsEl.getElementsByTagName('button');
+    for (var i = 0; i < btns.length; i++) {
+      var a = parseInt(btns[i].getAttribute('data-amount'), 10);
+      btns[i].className = (a === amount) ? 'amount-btn selected' : 'amount-btn';
+    }
+  }
+
+  function shGenerateGiftCode() {
+    if (!shSelectedAmount || shSelectedAmount <= 0) { showToast('اول مقدار رو انتخاب کن', 'error'); return; }
+    var code = generateRandomCode(8);
+    var codes = loadGiftCodes();
+    codes[code] = shSelectedAmount;
+    saveGiftCodes(codes);
+    shGeneratedGiftEl.innerHTML = code;
+    shGeneratedGiftBoxEl.className = '';
+    shRenderGiftCodes();
+    showToast('✅ کد هدیه ساخته شد: ' + code, 'success');
+  }
+
+  function shGenerateUnlockCode() {
+    var code = 'UNLOCK-' + generateRandomCode(6);
+    var codes = loadUnlockCodes();
+    codes[code] = true;
+    saveUnlockCodes(codes);
+    shGeneratedUnlockEl.innerHTML = code;
+    shGeneratedUnlockBoxEl.className = '';
+    shRenderUnlockCodes();
+    showToast('✅ کد فروشگاه ساخته شد: ' + code, 'success');
+  }
+
+  function shRenderGiftCodes() {
+    var codes = loadGiftCodes();
+    var html = '', hasAny = false;
+    for (var c in codes) {
+      if (codes.hasOwnProperty(c)) {
+        hasAny = true;
+        html += '<div style="margin-bottom:4px; padding:4px 8px; background:rgba(0,0,0,0.3); border-radius:6px; text-align:right;">';
+        html += '<span style="color:#ffd75a; font-family:monospace;">' + c + '</span>';
+        html += ' → <span style="color:#4ade80;">' + codes[c] + ' سکه</span>';
+        html += ' <span style="color:#f87171; cursor:pointer;" onclick="shDeleteGiftCode(\'' + c + '\')">🗑</span>';
+        html += '</div>';
+      }
+    }
+    if (!hasAny) html = '<div style="color:#94a3b8;">هنوز کدی ساخته نشده</div>';
+    shGiftCodesListEl.innerHTML = html;
+  }
+
+  function shDeleteGiftCode(c) {
+    var codes = loadGiftCodes();
+    delete codes[c];
+    saveGiftCodes(codes);
+    shRenderGiftCodes();
+  }
+
+  function shRenderUnlockCodes() {
+    var codes = loadUnlockCodes();
+    var html = '', hasAny = false;
+    for (var c in codes) {
+      if (codes.hasOwnProperty(c)) {
+        hasAny = true;
+        html += '<div style="margin-bottom:4px; padding:4px 8px; background:rgba(0,0,0,0.3); border-radius:6px; text-align:right;">';
+        html += '<span style="color:#14b8a6; font-family:monospace;">' + c + '</span>';
+        html += ' <span style="color:#f87171; cursor:pointer;" onclick="shDeleteUnlockCode(\'' + c + '\')">🗑</span>';
+        html += '</div>';
+      }
+    }
+    if (!hasAny) html = '<div style="color:#94a3b8;">هنوز کدی ساخته نشده</div>';
+    shUnlockCodesListEl.innerHTML = html;
+  }
+
+  function shDeleteUnlockCode(c) {
+    var codes = loadUnlockCodes();
+    delete codes[c];
+    saveUnlockCodes(codes);
+    shRenderUnlockCodes();
+  }
+
+  function shRenderAllCodes() {
+    shRenderGiftCodes();
+    shRenderUnlockCodes();
+  }
+
+  function shChangePassword() {
+    var np = shNewPasswordEl.value.trim();
+    if (np.length < 3) { showToast('رمز باید حداقل ۳ حرف باشه', 'error'); return; }
+    if (setPassword(np)) {
+      shNewPasswordEl.value = '';
+      showToast('✅ رمز جدید: ' + np, 'success');
+    } else showToast('❌ خطا در ذخیره', 'error');
+  }
+
+  function unlockShop() {
+    var code = shopUnlockInputEl.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    if (code.length < 6) { showToast('❗ کد نامعتبره', 'error'); return; }
+    var codes = loadUnlockCodes();
+    if (!codes[code]) { showToast('❌ این کد معتبر نیست', 'error'); return; }
+    delete codes[code];
+    saveUnlockCodes(codes);
+    shopUnlockInputEl.value = '';
+    startFreeMode();
+  }
+
+  function startFreeMode() {
+    if (freeModeTimer) { clearInterval(freeModeTimer); freeModeTimer = null; }
+    freeModeActive = true;
+    freeModeStartTime = new Date().getTime();
+    shopLockBannerEl.className = 'shop-lock-banner hidden';
+    freeCountdownEl.className = 'free-countdown';
+    freeTimeLeftEl.innerHTML = FREE_MODE_DURATION.toFixed(1);
+    freeBarEl.style.width = '100%';
+    statusEl.innerHTML = '🎁 حالت رایگان فعال!';
+    statusEl.className = 'status win';
+    renderShop();
+    freeModeTimer = setInterval(function() {
+      var elapsed = (new Date().getTime() - freeModeStartTime) / 1000;
+      var left = FREE_MODE_DURATION - elapsed;
+      if (left <= 0) {
+        clearInterval(freeModeTimer);
+        freeModeTimer = null;
+        endFreeMode();
+      } else {
+        freeTimeLeftEl.innerHTML = left.toFixed(1);
+        freeBarEl.style.width = ((left / FREE_MODE_DURATION) * 100) + '%';
+      }
+    }, 100);
+    showToast('🎁 حالت رایگان فعال شد! ' + FREE_MODE_DURATION + ' ثانیه فرصت', 'success');
+  }
+
+  function endFreeMode() {
+    freeModeActive = false;
+    freeCountdownEl.className = 'free-countdown hidden';
+    shopLockBannerEl.className = 'shop-lock-banner';
+    shopUnlockInputEl.value = '';
+    statusEl.innerHTML = '🔒 فروشگاه قفل شد';
+    statusEl.className = 'status lose';
+    renderShop();
+    showToast('🔒 زمان تموم شد', 'error');
+  }
+
+  function buyItem(id, price) {
+    if (!freeModeActive) { showToast('🔒 اول فروشگاه رو باز کن', 'error'); return; }
+    if (playerData.ownedItems.indexOf(id) >= 0) { showToast('قبلاً خریداری شده', 'error'); return; }
+    playerData.ownedItems.push(id);
+    saveData();
+    updateUserBar();
+    renderShop();
+    showToast('🎁 رایگان دریافت شد!', 'success');
+  }
+
+  function redeemGiftCode() {
+    var code = giftCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length < 6) { showToast('❗ کد نامعتبره', 'error'); return; }
+    if (mode !== 'online') { showToast('⚠️ کد هدیه فقط در حالت آنلاین', 'error'); return; }
+    var codes = loadGiftCodes();
+    if (!codes[code]) { showToast('❌ کد معتبر نیست', 'error'); return; }
+    var amount = codes[code];
+    playerData.wallet += amount;
+    delete codes[code];
+    saveGiftCodes(codes);
+    saveData();
+    updateUserBar();
+    giftCodeInput.value = '';
+    showToast('🎉 ' + amount + ' سکه دریافت کردی!', 'success');
+  }
+
+  var serverCheckInterval = null;
+  function showServerStatus(online) {
+    serverStatusEl.className = 'server-status show ' + (online ? 'online' : 'offline');
+    serverStatusTextEl.innerHTML = online ? 'متصل' : 'قطع - ' + disconnectSeconds + 'ث';
+  }
+  function hideServerStatus() { serverStatusEl.className = 'server-status'; }
+  function startServerCheck() {
+    if (serverCheckInterval) clearInterval(serverCheckInterval);
+    serverCheckInterval = setInterval(function() {
+      var online = false;
+      if (peer && !peer.destroyed) {
+        if (isHost) online = true;
+        else online = hostConn && hostConn.open;
+      }
+      if (mode === 'online') showServerStatus(online);
+    }, 2000);
+  }
+
+  function emptyBoard() { board = ['', '', '', '', '', '', '', '', '']; }
+
+  function checkWinner(bd) {
+    for (var i = 0; i < WIN_LINES.length; i++) {
+      var line = WIN_LINES[i];
+      var a = line[0], b = line[1], c = line[2];
+      if (bd[a] && bd[a] === bd[b] && bd[a] === bd[c]) return { winner: bd[a], line: line };
+    }
+    var allFilled = true;
+    for (var j = 0; j < 9; j++) if (bd[j] === '') { allFilled = false; break; }
+    if (allFilled) return { winner: 'draw', line: [] };
+    return null;
+  }
+
+  function minimax(bd, depth, isMax) {
+    var res = checkWinner(bd);
+    if (res) {
+      if (res.winner === 'O') return 10 - depth;
+      if (res.winner === 'X') return depth - 10;
+      return 0;
+    }
+    if (isMax) {
+      var best = -999;
+      for (var i = 0; i < 9; i++) if (bd[i] === '') {
+        bd[i] = 'O';
+        var v = minimax(bd, depth + 1, false);
+        bd[i] = '';
+        if (v > best) best = v;
+      }
+      return best;
+    } else {
+      var best2 = 999;
+      for (var m = 0; m < 9; m++) if (bd[m] === '') {
+        bd[m] = 'X';
+        var v2 = minimax(bd, depth + 1, true);
+        bd[m] = '';
+        if (v2 < best2) best2 = v2;
+      }
+      return best2;
+    }
+  }
+
+  function bestMove() {
+    var empty = [];
+    for (var i = 0; i < 9; i++) if (board[i] === '') empty.push(i);
+    if (empty.length === 0) return -1;
+    var best = -999, move = empty[0];
+    for (var j = 0; j < empty.length; j++) {
+      var idx = empty[j];
+      board[idx] = 'O';
+      var s = minimax(board, 0, false);
+      board[idx] = '';
+      if (s > best) { best = s; move = idx; }
+    }
+    return move;
+  }
+
+  function play(index, mark) {
+    board[index] = mark;
+    cells[index].innerHTML = mark === 'X' ? '✕' : '◯';
+    cells[index].className = mark === 'X' ? 'x' : 'o';
+    var res = checkWinner(board);
+    if (res) finishGame(res);
+  }
+
+  function finishGame(res) {
+    gameActive = false;
+    busy = false;
+    boardEl.className = 'board disabled';
+
+    if (res.winner === 'draw') {
+      statusEl.innerHTML = '🤝 مساوی شد!';
+      statusEl.className = 'status draw';
+    } else {
+      if (mode === 'single') {
+        statusEl.innerHTML = res.winner === 'X' ? '🏆 آفرین ' + playerData.name + '! بردی' : '💀 باختی!';
+        statusEl.className = res.winner === 'X' ? 'status win' : 'status lose';
+      } else if (mode === 'offline') {
+        statusEl.innerHTML = '🏆 ' + (res.winner === 'X' ? playerData.name : 'بازیکن دوم') + ' برد!';
+        statusEl.className = 'status win';
+      } else {
+        if (myRole === res.winner) {
+          statusEl.innerHTML = '🏆 آفرین ' + playerData.name + '! بردی';
+          statusEl.className = 'status win';
+        } else if (myRole === 'X' || myRole === 'O') {
+          statusEl.innerHTML = '💀 باختی!';
+          statusEl.className = 'status lose';
+        } else {
+          statusEl.innerHTML = '🏆 بازیکن ' + res.winner + ' برد';
+          statusEl.className = 'status win';
+        }
+      }
+    }
+
+    for (var i = 0; i < res.line.length; i++) cells[res.line[i]].className += ' win-cell';
+    afterGameEl.className = '';
+    if (mode === 'online' && isHost) broadcast({ type: 'update', board: board, turn: onlineTurn, active: false });
+  }
+
+  function clearBoard() {
+    emptyBoard();
+    currentPlayer = 'X';
+    busy = false;
+    gameActive = true;
+    for (var i = 0; i < cells.length; i++) { cells[i].innerHTML = ''; cells[i].className = ''; }
+    boardEl.className = 'board';
+    afterGameEl.className = 'hidden';
+  }
+
+  function stopFreeModeIfActive() {
+    if (freeModeTimer) { clearInterval(freeModeTimer); freeModeTimer = null; }
+    freeModeActive = false;
+  }
+
+  function hideAllScreens() {
+    menuEl.className = 'hidden';
+    onlineMenuEl.className = 'hidden';
+    waitingEl.className = 'hidden';
+    connectingEl.className = 'hidden';
+    shopScreenEl.className = 'hidden';
+    payScreenEl.className = 'hidden';
+    ownerPanelInShopEl.className = 'hidden';
+    roomInfoEl.className = 'room-info hidden';
+    playersBoxEl.className = 'players hidden';
+    freeCountdownEl.className = 'free-countdown hidden';
+    stopFreeModeIfActive();
+  }
+
+  function startSingle() {
+    mode = 'single'; clearBoard(); hideAllScreens(); hideServerStatus();
+    statusEl.innerHTML = '🎮 نوبت توست ' + playerData.name + ' (✕)';
+    statusEl.className = 'status';
+    addChatMsg('سیستم', 'حالت یک نفره شروع شد', true);
+  }
+  function startOffline() {
+    mode = 'offline'; clearBoard(); hideAllScreens(); hideServerStatus();
+    statusEl.innerHTML = '⚔️ نوبت ' + playerData.name + ' (✕)';
+    statusEl.className = 'status';
+    addChatMsg('سیستم', 'حالت دو نفره شروع شد', true);
+  }
+  function showOnlineMenu() {
+    hideAllScreens();
+    onlineMenuEl.className = '';
+    boardEl.className = 'board disabled';
+    hideServerStatus();
+    statusEl.innerHTML = '🌐 حالت آنلاین — ' + playerData.name;
+    statusEl.className = 'status';
+    codeInput.value = '';
+    giftCodeInput.value = '';
+  }
+
+  function showShop() {
+    hideAllScreens();
+    shopScreenEl.className = '';
+    boardEl.className = 'board disabled';
+    hideServerStatus();
+    statusEl.innerHTML = '🛒 فروشگاه';
+    statusEl.className = 'status';
+    freeModeActive = false;
+    freeCountdownEl.className = 'free-countdown hidden';
+    shopLockBannerEl.className = 'shop-lock-banner';
+    shopUnlockInputEl.value = '';
+    renderShop();
+  }
+
+  function renderShop() {
+    var html = '';
+    for (var i = 0; i < SHOP_ITEMS.length; i++) {
+      var item = SHOP_ITEMS[i];
+      var owned = playerData.ownedItems.indexOf(item.id) >= 0;
+
+      html += '<div class="shop-item' + (freeModeActive ? ' free-mode' : ' locked-item') + '">';
+      html += '<div class="icon">' + item.icon + '</div>';
+      html += '<div class="info">';
+      html += '<div class="name">' + item.name + '</div>';
+      html += '<div class="desc">' + item.desc + '</div>';
+      if (freeModeActive) {
+        html += '<div class="price free">🎁 رایگان</div>';
+      } else {
+        html += '<div class="price">💰 ' + item.price + ' سکه</div>';
+      }
+      html += '</div>';
+      if (owned) {
+        html += '<button type="button" class="buy-btn owned">✅ خریداری شده</button>';
+      } else if (!freeModeActive) {
+        html += '<button type="button" class="buy-btn shop-locked">🔒 فروشگاه قفل است</button>';
+      } else {
+        html += '<button type="button" class="buy-btn free-btn" onclick="buyItem(\'' + item.id + '\',' + item.price + ')">🎁 دریافت رایگان</button>';
+      }
+      html += '</div>';
+    }
+    shopItemsEl.innerHTML = html;
+  }
+
+  function showPayScreen() {
+    hideAllScreens();
+    payScreenEl.className = '';
+    boardEl.className = 'board disabled';
+    statusEl.innerHTML = '💳 پرداخت برای گروه بزرگ';
+    statusEl.className = 'status';
+  }
+
+  function doPayment() {
+    showToast('در نسخه‌ی نمایشی، پرداخت واقعی نیست', 'error');
+    if (playerData.ownedItems.indexOf('group6') < 0) {
+      playerData.ownedItems.push('group6');
+      saveData();
+      updateUserBar();
+    }
+    setTimeout(function() { showOnlineMenu(); }, 1500);
+  }
+
+  function generateCode() {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var c = '';
+    for (var i = 0; i < 6; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
+    return c;
+  }
+
+  function createOnlineGame() {
+    isHost = true; mySlot = 1; myRole = 'X';
+    var code = generateCode();
+    roomCodeEl.innerHTML = code;
+    onlineMenuEl.className = 'hidden';
+    waitingEl.className = '';
+    roomInfoEl.className = 'room-info';
+
+    peer = new Peer('dozking-' + code, { debug: 0 });
+
+    peer.on('connection', function(c) {
+      c.on('open', function() {
+        if (connections.length >= 5 && playerData.ownedItems.indexOf('group6') < 0) {
+          try { c.send({ type: 'paywall' }); } catch(e){}
+          setTimeout(function() { try { c.close(); } catch(e){} }, 500);
+          return;
+        }
+        if (connections.length >= 9) {
+          try { c.send({ type: 'full' }); } catch(e){}
+          setTimeout(function() { try { c.close(); } catch(e){} }, 300);
+          return;
+        }
+        var slot = connections.length + 2;
+        var role = slot === 2 ? 'O' : 'spectator';
+        connections.push({ conn: c, slot: slot, role: role });
+        try { c.send({ type: 'welcome', slot: slot, role: role, board: board, turn: onlineTurn, active: gameActive }); } catch(e){}
+        broadcastPlayers();
+        showToast('👤 بازیکن ' + slot + ' وارد شد', 'success');
+      });
+
+      c.on('data', function(data) {
+        if (!data) return;
+        if (data.type === 'move') {
+          var info = findConn(c);
+          if (!info || (info.role !== 'X' && info.role !== 'O')) return;
+          if (info.role !== onlineTurn) return;
+          if (board[data.index] !== '' || !gameActive) return;
+          play(data.index, info.role);
+          if (gameActive) { onlineTurn = onlineTurn === 'X' ? 'O' : 'X'; updateTurnStatus(); }
+          broadcast({ type: 'update', board: board, turn: onlineTurn, active: gameActive });
+        } else if (data.type === 'chat') {
+          var inf = findConn(c);
+          var who = inf ? 'بازیکن ' + inf.slot : 'کاربر';
+          addChatMsg(who, data.text, false);
+          broadcast({ type: 'chat', text: data.text, who: who }, c);
+        } else if (data.type === 'myName') {
+          var info2 = findConn(c);
+          if (info2) info2.name = data.name;
+          broadcastPlayers();
+        }
+      });
+
+      c.on('close', function() {
+        var info = findConn(c);
+        if (info) addChatMsg('سیستم', 'بازیکن ' + info.slot + ' خارج شد', true);
+        removeConn(c);
+        broadcastPlayers();
+      });
+    });
+
+    peer.on('error', function() {
+      waitingEl.className = 'hidden';
+      onlineMenuEl.className = '';
+      showToast('❌ خطا در ساخت اتاق', 'error');
+    });
+
+    startServerCheck();
+    addChatMsg('سیستم', 'اتاق ساخته شد. کد: ' + code, true);
+  }
+
+  function joinOnlineGame() {
+    var code = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 6) { statusEl.innerHTML = '❗ کد باید ۶ حرفی باشه!'; statusEl.className = 'status lose'; return; }
+    isHost = false;
+    onlineMenuEl.className = 'hidden';
+    connectingEl.className = '';
+    roomCodeEl.innerHTML = code;
+    roomInfoEl.className = 'room-info';
+
+    peer = new Peer({ debug: 0 });
+    peer.on('open', function() {
+      hostConn = peer.connect('dozking-' + code);
+      hostConn.on('open', function() {
+        connectingEl.className = 'hidden';
+        try { hostConn.send({ type: 'myName', name: playerData.name }); } catch(e){}
+      });
+      hostConn.on('data', function(data) {
+        if (!data) return;
+        if (data.type === 'welcome') {
+          mySlot = data.slot;
+          myRole = data.role;
+          board = data.board.slice();
+          onlineTurn = data.turn;
+          if (data.active) { gameActive = true; boardEl.className = 'board'; }
+          else { gameActive = false; boardEl.className = 'board disabled'; }
+          renderBoard();
+          mode = 'online';
+          playersBoxEl.className = 'players';
+          statusEl.innerHTML = myRole === 'spectator'
+            ? '👀 تماشاچی (اسلات ' + mySlot + ')'
+            : '🎮 ' + playerData.name + ' بازیکن ' + myRole + ' هستی';
+          statusEl.className = 'status';
+          startServerCheck();
+        } else if (data.type === 'full') {
+          showToast('❌ اتاق پر است', 'error');
+          setTimeout(backToMenu, 1200);
+        } else if (data.type === 'paywall') {
+          showToast('💳 برای گروه بیش از ۶ نفر باید پرداخت کنی', 'error');
+          setTimeout(showPayScreen, 1500);
+        } else if (data.type === 'update') {
+          board = data.board.slice();
+          onlineTurn = data.turn;
+          gameActive = data.active;
+          renderBoard();
+          if (gameActive) boardEl.className = 'board';
+          else boardEl.className = 'board disabled';
+          updateTurnStatus();
+          checkLocalEnd();
+        } else if (data.type === 'players') {
+          renderPlayers(data.list, data.total);
+        } else if (data.type === 'chat') {
+          addChatMsg(data.who || 'کاربر', data.text, false);
+        }
+      });
+      hostConn.on('close', function() { if (mode === 'online') startOfflineGrace(); });
+    });
+    peer.on('error', function() {
+      connectingEl.className = 'hidden';
+      onlineMenuEl.className = '';
+      showToast('❌ اتصال برقرار نشد', 'error');
+    });
+  }
+
+  function startOfflineGrace() {
+    isOfflineGrace = true;
+    disconnectSeconds = offlineGraceSeconds;
+    statusEl.innerHTML = '⚠️ اتصال قطع شد (' + Math.ceil(disconnectSeconds/60) + ' دقیقه فرصت)';
+    statusEl.className = 'status lose';
+    showServerStatus(false);
+    if (disconnectTimer) clearInterval(disconnectTimer);
+    disconnectTimer = setInterval(function() {
+      disconnectSeconds--;
+      if (disconnectSeconds <= 0) { clearInterval(disconnectTimer); endOfflineGrace(); }
+      else serverStatusTextEl.innerHTML = 'قطع - ' + disconnectSeconds + 'ث';
+    }, 1000);
+  }
+
+  function endOfflineGrace() {
+    isOfflineGrace = false;
+    hideServerStatus();
+    gameActive = false;
+    boardEl.className = 'board disabled';
+    showToast('⛔ زمان تموم شد، دوباره وصل شو', 'error');
+    setTimeout(function() {
+      if (confirm('برای ادامه باید دوباره وصل شی. بریم آنلاین؟')) showOnlineMenu();
+      else backToMenu();
+    }, 500);
+  }
+
+  function findConn(c) {
+    for (var i = 0; i < connections.length; i++) if (connections[i].conn === c) return connections[i];
+    return null;
+  }
+  function removeConn(c) {
+    for (var i = 0; i < connections.length; i++) if (connections[i].conn === c) { connections.splice(i, 1); return; }
+  }
+  function broadcast(msg, except) {
+    for (var i = 0; i < connections.length; i++) {
+      if (except && connections[i].conn === except) continue;
+      try { connections[i].conn.send(msg); } catch(e){}
+    }
+  }
+  function broadcastPlayers() {
+    var list = [{ slot: 1, role: 'X', name: playerData.name }];
+    for (var i = 0; i < connections.length; i++) {
+      list.push({ slot: connections[i].slot, role: connections[i].role, name: connections[i].name || ('بازیکن ' + connections[i].slot) });
+    }
+    broadcast({ type: 'players', list: list, total: connections.length + 1 });
+    renderPlayers(list, connections.length + 1);
+  }
+  function renderPlayers(list, total) {
+    var html = '';
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      var cls = 'p';
+      var label = '👀 ' + (p.name || ('اسلات ' + p.slot));
+      if (p.role === 'X') { cls += ' x'; label = '✕ ' + (p.name || ('بازیکن ' + p.slot)); }
+      else if (p.role === 'O') { cls += ' o'; label = '◯ ' + (p.name || ('بازیکن ' + p.slot)); }
+      if (mode === 'online' && p.slot === mySlot) cls += ' me';
+      html += '<span class="' + cls + '">' + label + '</span>';
+    }
+    playerListEl.innerHTML = html;
+  }
+  function renderBoard() {
+    for (var i = 0; i < 9; i++) {
+      if (board[i] === 'X') { cells[i].innerHTML = '✕'; cells[i].className = 'x'; }
+      else if (board[i] === 'O') { cells[i].innerHTML = '◯'; cells[i].className = 'o'; }
+      else { cells[i].innerHTML = ''; cells[i].className = ''; }
+    }
+  }
+  function updateTurnStatus() {
+    if (mode !== 'online' || !gameActive) return;
+    if (myRole === 'spectator') {
+      statusEl.innerHTML = '👀 نوبت: ' + (onlineTurn === 'X' ? '✕' : '◯');
+      statusEl.className = 'status';
+    } else if (onlineTurn === myRole) {
+      statusEl.innerHTML = '🎮 ' + playerData.name + ' نوبت توست (' + myRole + ')';
+      statusEl.className = 'status';
+    } else {
+      statusEl.innerHTML = '⏳ نوبت بازیکن دیگه';
+      statusEl.className = 'status';
+    }
+  }
+  function checkLocalEnd() {
+    var res = checkWinner(board);
+    if (res && gameActive) {
+      gameActive = false;
+      boardEl.className = 'board disabled';
+      if (res.winner === 'draw') {
+        statusEl.innerHTML = '🤝 مساوی شد!';
+        statusEl.className = 'status draw';
+      } else {
+        if (myRole === res.winner) {
+          statusEl.innerHTML = '🏆 آفرین ' + playerData.name + '! بردی';
+          statusEl.className = 'status win';
+        } else if (myRole === 'X' || myRole === 'O') {
+          statusEl.innerHTML = '💀 باختی!';
+          statusEl.className = 'status lose';
+        } else {
+          statusEl.innerHTML = '🏆 بازیکن ' + res.winner + ' برد';
+          statusEl.className = 'status win';
+        }
+      }
+      for (var i = 0; i < res.line.length; i++) cells[res.line[i]].className += ' win-cell';
+      afterGameEl.className = '';
+    }
+  }
+
+  function startOnlineGame() {
+    mode = 'online';
+    clearBoard();
+    waitingEl.className = 'hidden';
+    playersBoxEl.className = 'players';
+    onlineTurn = 'X';
+    if (myRole === 'X') statusEl.innerHTML = '🎮 ' + playerData.name + ' نوبت توست (✕)';
+    else if (myRole === 'O') statusEl.innerHTML = '⏳ نوبت بازیکن ۱ (✕)';
+    else statusEl.innerHTML = '👀 تماشاچی';
+    statusEl.className = 'status';
+    broadcast({ type: 'update', board: board, turn: onlineTurn, active: true });
+    broadcastPlayers();
+  }
+
+  function restartSame() {
+    if (mode === 'offline') startOffline();
+    else if (mode === 'single') startSingle();
+    else if (mode === 'online') {
+      if (isHost) startOnlineGame();
+      else { statusEl.innerHTML = '⏳ در انتظار شروع مجدد...'; statusEl.className = 'status'; }
+    }
+  }
+
+  function backToMenu() {
+    gameActive = false;
+    boardEl.className = 'board disabled';
+    afterGameEl.className = 'hidden';
+    hideAllScreens();
+    menuEl.className = '';
+    hideServerStatus();
+    if (disconnectTimer) { clearInterval(disconnectTimer); disconnectTimer = null; }
+    isOfflineGrace = false;
+    statusEl.innerHTML = 'حالت بازی رو انتخاب کن';
+    statusEl.className = 'status';
+    for (var i = 0; i < cells.length; i++) { cells[i].innerHTML = ''; cells[i].className = ''; }
+    emptyBoard();
+    mySlot = 0; myRole = 'X'; isHost = false;
+    connections = [];
+    if (hostConn) { try { hostConn.close(); } catch(e){} hostConn = null; }
+    if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+  }
+
+  function adjustChatPanel() {
+    if (!chatOpen) return;
+    var vh = window.innerHeight;
+    var maxHeight = vh - 60;
+    if (maxHeight < 240) maxHeight = 240;
+    if (maxHeight > 400) maxHeight = 400;
+    chatPanel.style.height = maxHeight + 'px';
+    chatMessages.style.height = (maxHeight - 88) + 'px';
+  }
+  function openChat() {
+    chatOpen = true;
+    chatPanel.className = 'chat-panel';
+    chatOverlay.className = 'chat-overlay';
+    unreadCount = 0;
+    chatBadge.className = 'badge';
+    adjustChatPanel();
+  }
+  function closeChat() {
+    chatOpen = false;
+    chatPanel.className = 'chat-panel hidden';
+    chatOverlay.className = 'chat-overlay hidden';
+  }
+  function toggleChat() { if (chatOpen) closeChat(); else openChat(); }
+  window.onresize = function() { adjustChatPanel(); };
+  chatInput.onfocus = function() {
+    setTimeout(adjustChatPanel, 100);
+    setTimeout(adjustChatPanel, 300);
+    setTimeout(adjustChatPanel, 600);
+  };
+  chatInput.onblur = function() { setTimeout(adjustChatPanel, 200); };
+  chatCloseBtn.onclick = function(e) { if (e && e.stopPropagation) e.stopPropagation(); closeChat(); return false; };
+  chatSendBtn.onclick = function(e) { if (e && e.stopPropagation) e.stopPropagation(); sendChat(); return false; };
+
+  function addChatMsg(who, text, isSystem) {
+    var div = document.createElement('div');
+    div.className = 'chat-msg';
+    if (who === playerData.name) div.className = 'chat-msg me';
+    var whoSpan = document.createElement('span');
+    whoSpan.className = 'who';
+    whoSpan.innerHTML = who;
+    div.appendChild(whoSpan);
+    div.appendChild(document.createTextNode(text));
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (!chatOpen && !isSystem && who !== playerData.name) {
+      unreadCount++;
+      chatBadge.innerHTML = unreadCount;
+      chatBadge.className = 'badge show';
+    }
+  }
+
+  function sendChat() {
+    var text = chatInput.value.trim();
+    if (!text) return;
+    chatInput.value = '';
+    addChatMsg(playerData.name, text, false);
+    if (mode === 'online') {
+      if (isHost) broadcast({ type: 'chat', text: text, who: playerData.name });
+      else if (hostConn && hostConn.open) { try { hostConn.send({ type: 'chat', text: text, who: playerData.name }); } catch(e){} }
+    }
+  }
+
+  chatInput.onkeypress = function(e) {
+    e = e || window.event;
+    if ((e.keyCode || e.which) === 13) { sendChat(); return false; }
+  };
+
+  var BTN_SIZE = 60, MARGIN = 8, MOVE_THRESHOLD = 10, HOLD_TIME = 250;
+  var btnX = 16, btnY = 0;
+  var drag = { active: false, dragging: false, startTouchX: 0, startTouchY: 0, startBtnX: 0, startBtnY: 0, holdTimer: null };
+  function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
+  function setBtnPos(x, y, dragging) {
+    var w = window.innerWidth, h = window.innerHeight;
+    x = clamp(x, MARGIN, w - BTN_SIZE - MARGIN);
+    y = clamp(y, MARGIN, h - BTN_SIZE - MARGIN);
+    btnX = x; btnY = y;
+    var scale = dragging ? ' scale(1.12)' : '';
+    chatBtn.style.webkitTransform = 'translate3d(' + x + 'px,' + y + 'px,0)' + scale;
+    chatBtn.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)' + scale;
+  }
+  function initBtnPos() { var h = window.innerHeight; setBtnPos(16, h - BTN_SIZE - 16, false); }
+  function savePos() { try { if (window.localStorage) { localStorage.setItem('chatBtnX', String(btnX)); localStorage.setItem('chatBtnY', String(btnY)); } } catch(e){} }
+  function loadPos() {
+    try {
+      if (window.localStorage) {
+        var x = localStorage.getItem('chatBtnX'), y = localStorage.getItem('chatBtnY');
+        if (x !== null && y !== null) { setBtnPos(parseFloat(x), parseFloat(y), false); return true; }
+      }
+    } catch(e){}
+    return false;
+  }
+  function getPoint(e) {
+    if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: e.clientX || 0, y: e.clientY || 0 };
+  }
+  function onStart(e) {
+    var p = getPoint(e);
+    drag.active = true; drag.dragging = false;
+    drag.startTouchX = p.x; drag.startTouchY = p.y;
+    drag.startBtnX = btnX; drag.startBtnY = btnY;
+    chatBtn.className = 'chat-btn pressing';
+    if (drag.holdTimer) clearTimeout(drag.holdTimer);
+    drag.holdTimer = setTimeout(function() {
+      if (drag.active && !drag.dragging) { drag.active = false; chatBtn.className = 'chat-btn'; toggleChat(); }
+    }, HOLD_TIME);
+  }
+  function onMove(e) {
+    if (!drag.active) return;
+    var p = getPoint(e);
+    var dx = p.x - drag.startTouchX, dy = p.y - drag.startTouchY;
+    if (!drag.dragging && Math.sqrt(dx*dx + dy*dy) > MOVE_THRESHOLD) {
+      drag.dragging = true;
+      if (drag.holdTimer) { clearTimeout(drag.holdTimer); drag.holdTimer = null; }
+      chatBtn.className = 'chat-btn dragging';
+    }
+    if (drag.dragging) {
+      setBtnPos(drag.startBtnX + dx, drag.startBtnY + dy, true);
+      if (e.preventDefault) e.preventDefault();
+      return false;
+    }
+  }
+  function onEnd(e) {
+    if (!drag.active) return;
+    drag.active = false;
+    if (drag.holdTimer) { clearTimeout(drag.holdTimer); drag.holdTimer = null; }
+    chatBtn.className = 'chat-btn';
+    if (drag.dragging) { setBtnPos(btnX, btnY, false); savePos(); }
+    else toggleChat();
+    drag.dragging = false;
+  }
+  function onCancel(e) {
+    if (drag.holdTimer) { clearTimeout(drag.holdTimer); drag.holdTimer = null; }
+    drag.active = false; drag.dragging = false;
+    chatBtn.className = 'chat-btn';
+  }
+  if (chatBtn.addEventListener) {
+    chatBtn.addEventListener('touchstart', onStart, false);
+    chatBtn.addEventListener('touchmove', onMove, false);
+    chatBtn.addEventListener('touchend', onEnd, false);
+    chatBtn.addEventListener('touchcancel', onCancel, false);
+    chatBtn.addEventListener('mousedown', function(e) {
+      onStart(e);
+      var mm = function(ev) { onMove(ev); };
+      var mu = function(ev) { onEnd(ev); document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); };
+      document.addEventListener('mousemove', mm, false);
+      document.addEventListener('mouseup', mu, false);
+      if (e.preventDefault) e.preventDefault();
+    }, false);
+  }
+  window.addEventListener('resize', function() { setBtnPos(btnX, btnY, false); savePos(); }, false);
+
+  var handler = function(e) {
+    e = e || window.event;
+    var target = e.target || e.srcElement;
+    if (!target || target.tagName !== 'TD') return;
+    if (!gameActive || busy) return;
+    var i = parseInt(target.getAttribute('data-index'), 10);
+    if (board[i] !== '') return;
+
+    if (mode === 'offline') {
+      play(i, currentPlayer);
+      if (!gameActive) return;
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      statusEl.innerHTML = '⚔️ نوبت ' + (currentPlayer === 'X' ? playerData.name + ' (✕)' : 'بازیکن دوم (◯)');
+      statusEl.className = 'status';
+    } else if (mode === 'single') {
+      play(i, 'X');
+      if (!gameActive) return;
+      statusEl.innerHTML = '⏳ نوبت کامپیوتر...';
+      statusEl.className = 'status';
+      busy = true;
+      setTimeout(function() {
+        if (!gameActive) { busy = false; return; }
+        var m = bestMove();
+        if (m !== -1) play(m, 'O');
+        busy = false;
+        if (gameActive) {
+          statusEl.innerHTML = '🎮 نوبت توست ' + playerData.name + ' (✕)';
+          statusEl.className = 'status';
+        }
+      }, 400);
+    } else if (mode === 'online') {
+      if (myRole !== 'X' && myRole !== 'O') { statusEl.innerHTML = '👀 تو تماشاچی هستی'; statusEl.className = 'status'; return; }
+      if (onlineTurn !== myRole) { statusEl.innerHTML = '⏳ صبر کن'; statusEl.className = 'status'; return; }
+      if (isHost) {
+        play(i, myRole);
+        if (gameActive) { onlineTurn = onlineTurn === 'X' ? 'O' : 'X'; updateTurnStatus(); }
+        broadcast({ type: 'update', board: board, turn: onlineTurn, active: gameActive });
+      } else {
+        play(i, myRole);
+        if (gameActive) { onlineTurn = onlineTurn === 'X' ? 'O' : 'X'; updateTurnStatus(); }
+        if (hostConn && hostConn.open) { try { hostConn.send({ type: 'move', index: i }); } catch(e){} }
+      }
+    }
+  };
+  if (boardEl.addEventListener) boardEl.addEventListener('click', handler, false);
+  else boardEl.attachEvent('onclick', handler);
+
+  loadData();
+  if (playerData.name) {
+    nameScreenEl.className = 'hidden';
+    mainContentEl.className = '';
+    updateUserBar();
+    statusEl.innerHTML = 'خوش آمدی ' + playerData.name + '! حالت بازی رو انتخاب کن';
+  } else {
+    nameScreenEl.className = '';
+    mainContentEl.className = 'hidden';
+  }
+  if (!loadPos()) initBtnPos();
+  nameInputEl.onkeypress = function(e) {
+    e = e || window.event;
+    if ((e.keyCode || e.which) === 13) saveName();
+  };
+  ownerShopPasswordEl.onkeypress = function(e) {
+    e = e || window.event;
+    if ((e.keyCode || e.which) === 13) checkOwnerPasswordInShop();
+  };
+</script>
+</body>
+</html>
